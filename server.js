@@ -46,6 +46,10 @@ async function ValidateEmail(email)
     }
 }
 
+app.get("/", function(req, res){
+    res.render("Hello");
+})
+
 app.post("/register", async function(req, res){
 
 
