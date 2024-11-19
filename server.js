@@ -1,15 +1,23 @@
-require('dotenv').config()
-const express = require('express')
-const mongoose = require('mongoose')
-const bodyParser= require("body-parser")
-var cors = require('cors')
-const ejs = require('ejs')
+import dotenv from 'dotenv';
+dotenv.config(); // Configure environment variables
 
+import express from 'express';
+import mongoose from 'mongoose';
+import bodyParser from 'body-parser';
+import cors from 'cors';
+import ejs from 'ejs';
+import axios from 'axios';
+import * as cheerio from 'cheerio';
+import punycode from 'punycode';
+import fetch from 'node-fetch';
+import puppeteer from 'puppeteer';
 
 
 const app = express()
 app.use(express.json());
 
+app.set('view engine', 'ejs');
+mongoose.set('strictQuery', true);
 app.use(cors())
 app.use(bodyParser.urlencoded({
     extended: true
@@ -47,7 +55,7 @@ async function ValidateEmail(email)
 }
 
 app.get("/", function(req, res){
-    res.render("Hello");
+    res.send("Hello");
 })
 
 app.post("/register", async function(req, res){
@@ -58,6 +66,7 @@ app.post("/register", async function(req, res){
     email = email.toLowerCase();
     let password = req.body.password;
 
+    console.log("called Here");
     let customStatus = await ValidateEmail(email);
     if(customStatus === 800)
     {
@@ -170,6 +179,51 @@ app.post("/giveArray", async function(req,res){
     // console.log(allCoins);
     return(res.send(allCoins))
 })
+
+
+
+
+
+app.get('/giveGraph', async (req, res) => {
+    const url = 'https://www.coingecko.com/?items=300';
+
+    try {
+        const browser = await puppeteer.launch({ headless: true });
+        const page = await browser.newPage();
+
+        // Set headers to mimic a real browser
+        await page.setExtraHTTPHeaders({
+            "Accept-Language": "en-US,en;q=0.9",
+        });
+
+        await page.setUserAgent(
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/111.0.0.0 Safari/537.36"
+        );
+
+        await page.goto(url, { waitUntil: 'domcontentloaded' });
+
+        // Get the page content
+        const content = await page.content();
+        const $ = cheerio.load(content);
+
+        let str = "7d chart";
+        const selector = `img[alt*="${str}"]`;
+
+        const images = [];
+        $(selector).each((index, img) => {
+            const src = $(img).attr("src");
+            const alt = $(img).attr("alt");
+            images.push({ src, alt });
+        });
+
+        await browser.close();
+        res.json(images);
+    } catch (err) {
+        console.error('Error fetching or parsing data:', err.message);
+        res.status(500).send('An error occurred');
+    }
+});
+
 
 
 // if(process.env.NODE_ENV == "production")
